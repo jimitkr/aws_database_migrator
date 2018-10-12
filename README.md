@@ -1,2 +1,2 @@
-# aws_database_migrator
+# AWS Database Migrator
 Migrate on-premise databases to AWS RDS instances
