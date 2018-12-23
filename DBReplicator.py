@@ -5,6 +5,7 @@ from botocore.exceptions import ClientError
 from AWSClients import AWSClients
 from PropertyLoader import PropertyLoader
 
+
 # todo add db engine validation method
 
 class DBReplicator:
@@ -138,20 +139,7 @@ class DBReplicator:
                 'Waiting until RDS instance ' + instance_identifier + ' becomes available. Will check ' + str(self.config_properties.check_status_num_times) + ' times at intervals of 5 seconds. This '
                                                                                                                                                                'task can sometimes take upwards of 10 '
                                                                                                                                                                'minutes.')
-            i = 0
-            while i < self.config_properties.check_status_num_times:
-                instance_status = (self.get_rds_db_instance_details(instance_identifier))['DBInstances'][0]['DBInstanceStatus']
-                if instance_status == 'available':
-                    self.config_properties.logger.info('RDS DB Instance ' + instance_identifier + ' is NOW AVAILABLE. Moving forward')
-                    break
-                else:
-                    self.config_properties.logger.info('RDS DB instance status is: ' + instance_status + ' . Waiting ...')
-                    sleep(5)
-                    i += 1
-            if i == self.config_properties.check_status_num_times:
-                self.config_properties.logger.exception(' RDS instance ' + instance_identifier + ' is still NOT ONLINE. Please 1) Increase the waiting time in config.properties file if need be, '
-                                                                                                 'then 2)  Fix the issue with your'
-                                                                                                 ' RDS instance if need be, and then 3) Re-run this program')
+            self.wait_until_target_db_available(instance_identifier)
         except ClientError as e:
             exception_code = e.response['Error']['Code']
             exception_msg = e.response['Error']['Message']
@@ -159,6 +147,22 @@ class DBReplicator:
                 self.config_properties.logger.info(instance_identifier + ' ' + exception_msg + '. Moving forward')
             else:
                 self.config_properties.logger.exception(e)
+
+    def wait_until_target_db_available(self, instance_identifier):
+        i = 0
+        while i < self.config_properties.check_status_num_times:
+            instance_status = (self.get_rds_db_instance_details(instance_identifier))['DBInstances'][0]['DBInstanceStatus']
+            if instance_status == 'available':
+                self.config_properties.logger.info('RDS DB Instance ' + instance_identifier + ' is NOW AVAILABLE. Moving forward')
+                break
+            else:
+                self.config_properties.logger.info('RDS DB instance status is: ' + instance_status + ' . Waiting ...')
+                sleep(5)
+                i += 1
+        if i == self.config_properties.check_status_num_times:
+            self.config_properties.logger.exception(' RDS instance ' + instance_identifier + ' is still NOT ONLINE. Please 1) Increase the waiting time in config.properties file if need be, '
+                                                                                             'then 2)  Fix the issue with your'
+                                                                                             ' RDS instance if need be, and then 3) Re-run this program')
 
     def get_rds_db_instance_details(self, instance_identifier):
         try:
@@ -250,7 +254,7 @@ class DBReplicator:
             self.config_properties.logger.info(response)
             replication_task_arn = response['ReplicationTask']['ReplicationTaskArn']
             i = 0
-            #  todo explore getwaiter
+            #  todo explore waiter
             while i < self.config_properties.check_status_num_times:
                 task_status = (self.get_replication_task_details(task_identifier))['ReplicationTasks'][0]['Status']
                 if task_status == 'ready':
@@ -280,11 +284,3 @@ class DBReplicator:
             self.config_properties.logger.info(response)
         except ClientError as e:
             self.config_properties.logger.exception(e)
-
-
-'''
-    def database_migration_status(self):
-        while 1:
-            print((self.get_replication_task_details('replication-task'))['ReplicationTasks'][0]['Status'])
-            sleep(10)
-'''
