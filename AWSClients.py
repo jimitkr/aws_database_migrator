@@ -1,6 +1,5 @@
 import os
 
-import boto
 import boto3
 
 from PropertyLoader import PropertyLoader
